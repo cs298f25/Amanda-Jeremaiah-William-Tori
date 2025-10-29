@@ -1,1 +1,5 @@
-# Amanda-Jeremaiah-William-Tori
+# Contributors:
+## Amanda
+## Jeremiah
+## William
+## Tori
