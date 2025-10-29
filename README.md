@@ -1,4 +1,4 @@
-# Strava Web Project
+# Strava Web Programming Project
 
 ## Contributors 
 * Amanda
