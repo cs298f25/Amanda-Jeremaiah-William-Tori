@@ -3,10 +3,10 @@ VALUES ('Robert', 'Robertson', 'M', 40.00, 12.00);
 
 -- LAST_INSERT_ID() gets the auto incremented athlete_id
 INSERT INTO DailyMileage (`date`, distance, activity_title, athlete_id) VALUES
-('2025-11-07', 3.50, 'Sunday run', LAST_INSERT_ID()),
-('2025-11-08', 6.00, 'Monday run', LAST_INSERT_ID()),
-('2025-11-09', 8.50, 'Tuesday run', LAST_INSERT_ID()),
-('2025-11-10', 4.00, 'Wednesday run', LAST_INSERT_ID()),
-('2025-11-11', 12.00, 'Thursday run', LAST_INSERT_ID()),
-('2025-11-12', 7.50, 'Friday run', LAST_INSERT_ID()),
-('2025-11-13', 5.25, 'Saturday run', LAST_INSERT_ID());
+('2025-11-09', 3.50, 'Sunday run', LAST_INSERT_ID()),
+('2025-11-10', 6.00, 'Monday run', LAST_INSERT_ID()),
+('2025-11-11', 8.50, 'Tuesday run', LAST_INSERT_ID()),
+('2025-11-12', 4.00, 'Wednesday run', LAST_INSERT_ID()),
+('2025-11-13', 12.00, 'Thursday run', LAST_INSERT_ID()),
+('2025-11-14', 7.50, 'Friday run', LAST_INSERT_ID()),
+('2025-11-15', 5.25, 'Saturday run', LAST_INSERT_ID());
