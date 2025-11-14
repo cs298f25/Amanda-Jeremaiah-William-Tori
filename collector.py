@@ -2,8 +2,10 @@
 import sqlite3
 import datetime
 import random
+import os
 
 DB_NAME = "MileageTracker.db"
+SCHEMA_FILE = os.path.join(os.path.dirname(__file__), "sql", "schema.sql")
 
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:
@@ -13,29 +15,10 @@ def init_db():
         cursor.execute("DROP TABLE IF EXISTS DailyMileage")
         cursor.execute("DROP TABLE IF EXISTS Athletes")
         
-        # Athlete table
-        cursor.execute("""
-        CREATE TABLE Athletes (
-            athlete_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            first_name VARCHAR(50),
-            last_name VARCHAR(50),
-            gender TEXT CHECK(gender IN ('M', 'F', 'O')) DEFAULT 'O',
-            mileage_goal REAL,
-            long_run_goal REAL
-        )
-        """)
-
-        # DailyMileage table
-        cursor.execute("""
-        CREATE TABLE DailyMileage (
-            activity_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date DATE,
-            distance REAL,
-            activity_title VARCHAR(100),
-            athlete_id INTEGER,
-            FOREIGN KEY (athlete_id) REFERENCES Athletes(athlete_id)
-        )
-        """)
+        # Read and execute schema from SQL file
+        with open(SCHEMA_FILE, 'r') as f:
+            schema_sql = f.read()
+            cursor.executescript(schema_sql)
 
         conn.commit()
 

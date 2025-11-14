@@ -19,9 +19,10 @@ def get_data():
         return jsonify({"Error": str(e)}), 500
 
 if __name__ == "__main__":
-    port = int(os.environ.get('PORT', 8000))
-    app.run(host='0.0.0.0', port=port)
+    # Initialize database before starting the server
     init_db()
     add_example_data()
-    print("Database started")
-    app.run(debug=True,port=8000)
+    print("Database initialized")
+    
+    port = int(os.environ.get('PORT', 8000))
+    app.run(host='0.0.0.0', port=port, debug=True)
