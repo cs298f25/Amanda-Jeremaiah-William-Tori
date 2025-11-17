@@ -20,6 +20,15 @@ def get_data():
     except Exception as e:
         return jsonify({"Error": str(e)}), 500
 
+@app.route("/athletes")
+def get_athletes_endpoint():
+    try:
+        from database import get_athletes
+        data = get_athletes()
+        return jsonify(data)
+    except Exception as e:
+        return jsonify({"Error": str(e)}), 500
+
 @app.route("/activitiesFromID")
 def get_activities_from_id():
     try:

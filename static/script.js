@@ -38,7 +38,7 @@ function getDayName(date) {
 // --- NEW "TRANSLATION" FUNCTION ---
 // Takes the raw data and processes it for a specific week
 function processDataForWeek(weekStart) {
-    // The /data endpoint returns a *list* of athletes.
+    // The /data endpoint returns activities, which we've transformed into athletes.
     // This UI is for one athlete. Try to find Tori, otherwise use the last athlete added.
     let athlete = allAthleteData.find(a => 
         (a.first_name && a.first_name.toLowerCase() === 'tori') || 
@@ -62,20 +62,45 @@ function processDataForWeek(weekStart) {
     };
     let total = 0;
 
-    // Calculate the end of the selected week
+    // Calculate the end of the selected week (set to end of Sunday)
     const weekEnd = new Date(weekStart);
     weekEnd.setDate(weekEnd.getDate() + 6); // 6 days after Monday is Sunday
+    weekEnd.setHours(23, 59, 59, 999); // Set to end of Sunday
+    
+    // Set weekStart to beginning of Monday
+    const weekStartCopy = new Date(weekStart);
+    weekStartCopy.setHours(0, 0, 0, 0);
 
     // Filter all the athlete's mileage for runs in this week
+    if (!athlete.mileage || !Array.isArray(athlete.mileage)) {
+        console.warn("Athlete mileage is not an array:", athlete);
+        return { goal: goal, daily_mileage: weeklyRuns, total: 0, remaining: goal };
+    }
+    
+    console.log(`Processing ${athlete.mileage.length} activities for week ${weekStartCopy.toISOString().split('T')[0]} to ${weekEnd.toISOString().split('T')[0]}`);
+    
     athlete.mileage.forEach(run => {
-        // Add 'T00:00:00' to the date string to avoid timezone issues
-        const runDate = new Date(run.date + 'T00:00:00');
+        if (!run.date) {
+            console.warn("Activity missing date:", run);
+            return;
+        }
+        // Parse the date - handle both date strings and ensure proper parsing
+        let runDate;
+        if (typeof run.date === 'string') {
+            // If it's already a date string, parse it
+            runDate = new Date(run.date + 'T00:00:00');
+        } else {
+            runDate = new Date(run.date);
+        }
+        runDate.setHours(0, 0, 0, 0);
         
         // Check if the run date is within the selected week
-        if (runDate >= weekStart && runDate <= weekEnd) {
+        if (runDate >= weekStartCopy && runDate <= weekEnd) {
             const dayName = getDayName(runDate);
-            weeklyRuns[dayName] += run.distance;
-            total += run.distance;
+            const distance = parseFloat(run.distance) || 0;
+            weeklyRuns[dayName] += distance;
+            total += distance;
+            console.log(`Added ${distance} miles on ${dayName} (${run.date})`);
         }
     });
 
@@ -112,6 +137,10 @@ function displaySelectedWeek() {
         // 1. "Translate" the raw data into a weekly summary
         const weeklyData = processDataForWeek(weekStart);
         
+        // Debug: Log the weekly data
+        console.log("Weekly data for week starting:", weekStart, weeklyData);
+        console.log("Total mileage:", weeklyData.total);
+        
         // 2. Populate the table with that summary
         populateTable(weeklyData, weekStart);
         
@@ -119,6 +148,7 @@ function displaySelectedWeek() {
         status.className = 'status error';
         status.style.display = 'block';
         status.textContent = `Error displaying week data: ${error.message}.`;
+        console.error("Error in displaySelectedWeek:", error);
     }
 }
         
@@ -167,6 +197,37 @@ function populateTable(data, weekStart) {
     document.getElementById('remainingMileage').textContent = remaining.toFixed(2);
 }
 
+// --- NEW FUNCTION ---
+// Transforms flat list of activities into grouped athlete structure
+function transformActivitiesToAthletes(activities) {
+    if (!activities || activities.length === 0) {
+        return [];
+    }
+    
+    // Group activities by athlete_id
+    const activitiesByAthlete = {};
+    activities.forEach(activity => {
+        const athleteId = activity.athlete_id;
+        if (!activitiesByAthlete[athleteId]) {
+            activitiesByAthlete[athleteId] = [];
+        }
+        activitiesByAthlete[athleteId].push(activity);
+    });
+    
+    // Create athlete objects with their activities
+    const athletes = Object.keys(activitiesByAthlete).map(athleteId => {
+        return {
+            athlete_id: parseInt(athleteId),
+            mileage: activitiesByAthlete[athleteId],
+            mileage_goal: 0, // Default, will be updated if we fetch athlete info
+            first_name: null,
+            last_name: null
+        };
+    });
+    
+    return athletes;
+}
+
 // --- REWRITTEN ---
 // This is the new main function that runs on page load.
 async function initializePage() {
@@ -179,18 +240,55 @@ async function initializePage() {
     status.textContent = 'Loading athlete data from /data...';
 
     try {
-        // 1. Fetch ALL data from the *correct* endpoint
-        const response = await fetch('/data'); // This is your real endpoint
+        // 1. Fetch activities from /data endpoint
+        const response = await fetch('/data'); // This returns flat list of activities
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        allAthleteData = await response.json(); // Store it globally
+        const activities = await response.json(); // Get flat list of activities
         
         // Check if we got any data
-        if (!allAthleteData || allAthleteData.length === 0) {
-            throw new Error("No athlete data found from /data endpoint.");
+        if (!activities || activities.length === 0) {
+            throw new Error("No activity data found from /data endpoint.");
         }
+        
+        // 2. Transform activities into athlete structure
+        allAthleteData = transformActivitiesToAthletes(activities);
+        
+        // 3. Try to fetch athlete metadata to enrich the data
+        try {
+            const athletesResponse = await fetch('/athletes'); // Assuming this endpoint exists, or we'll create it
+            if (athletesResponse.ok) {
+                const athletesInfo = await athletesResponse.json();
+                // Merge athlete info with activities
+                allAthleteData = allAthleteData.map(athlete => {
+                    const athleteInfo = athletesInfo.find(a => a.athlete_id === athlete.athlete_id);
+                    if (athleteInfo) {
+                        return {
+                            ...athlete,
+                            first_name: athleteInfo.first_name,
+                            last_name: athleteInfo.last_name,
+                            mileage_goal: athleteInfo.mileage_goal || 0,
+                            long_run_goal: athleteInfo.long_run_goal || 0
+                        };
+                    }
+                    return athlete;
+                });
+            }
+        } catch (e) {
+            // If we can't fetch athlete info, continue with defaults
+            console.log("Could not fetch athlete metadata, using defaults");
+        }
+        
+        // Check if we have any athlete data after transformation
+        if (!allAthleteData || allAthleteData.length === 0) {
+            throw new Error("No athlete data found after processing activities.");
+        }
+        
+        // Debug: Log the transformed data
+        console.log("Transformed athlete data:", allAthleteData);
+        console.log("First athlete mileage count:", allAthleteData[0]?.mileage?.length || 0);
 
         // 2. Populate week dropdown (same as before)
         const currentWeekStart = getWeekStart();
@@ -208,11 +306,15 @@ async function initializePage() {
 
         // 4. Load the data for the current week (using the data we just fetched)
         displaySelectedWeek();
+        
+        // Hide loading status after successful load
+        status.style.display = 'none';
 
     } catch (error) {
         status.className = 'status error';
         status.style.display = 'block';
         status.textContent = `Error loading data: ${error.message}. Is the backend server running?`;
+        console.error("Error in initializePage:", error);
     }
 }
 
