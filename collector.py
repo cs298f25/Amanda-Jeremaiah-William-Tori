@@ -212,12 +212,33 @@ def add_new_activities_to_db(activities, athlete_id):
     
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
+        inserted_count = 0
+        skipped_count = 0
+        
         for strava_activity in activities:
             # Transform Strava activity to database format
             activity = transform_strava_activity(strava_activity)
-            cursor.execute("INSERT INTO DailyMileage (date, distance, activity_title, athlete_id) VALUES (?, ?, ?, ?)", 
-                         (activity['date'], activity['distance'], activity['activity_title'], athlete_id))
+            
+            # Check if this activity already exists (same date, distance, title, and athlete)
+            cursor.execute("""
+                SELECT activity_id FROM DailyMileage 
+                WHERE date = ? AND distance = ? AND activity_title = ? AND athlete_id = ?
+            """, (activity['date'], activity['distance'], activity['activity_title'], athlete_id))
+            
+            existing = cursor.fetchone()
+            
+            if existing is None:
+                # Activity doesn't exist, insert it
+                cursor.execute("INSERT INTO DailyMileage (date, distance, activity_title, athlete_id) VALUES (?, ?, ?, ?)", 
+                             (activity['date'], activity['distance'], activity['activity_title'], athlete_id))
+                inserted_count += 1
+            else:
+                # Activity already exists, skip it
+                skipped_count += 1
+        
         conn.commit()
+        print(f"Inserted {inserted_count} new activities, skipped {skipped_count} duplicates")
+    
     return activities
 
 def add_strava_athlete_to_db():
