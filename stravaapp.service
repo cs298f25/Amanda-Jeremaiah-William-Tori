@@ -1,0 +1,21 @@
+[Unit]
+Description=Launch the Strava Web App
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Set a dedicated, non-root user for security (e.g., ec2-user)
+User=ec2-user
+Group=ec2-user
+# Use the new, clear installation directory
+WorkingDirectory=/opt/Amanda-Jeremaiah-William-Tori
+# Use the new, clear installation directory
+ExecStart=/opt/Amanda-Jeremaiah-William-Tori/.venv/bin/gunicorn \
+          --bind 0.0.0.0:8000 \
+          --workers 4 \
+          app:app
+# Restart if the app crashes
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
