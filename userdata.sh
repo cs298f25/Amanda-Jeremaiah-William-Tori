@@ -22,7 +22,7 @@ pip install -r requirements.txt
 # When using this script as EC2 User Data, the sudo is optional but good for clarity.
 # sudo cp stravaapp.service /etc/systemd/system
 #/home/ec2-user/Amanda-Jeremaiah-William-Tori/.venv/bin/python3 -m pip install --upgrade pip
-sudo cp stravaapp.service /etc/systemd/system
+sudo cp /opt/Amanda-Jeremaiah-William-Tori/stravaapp.service /etc/systemd/system/
 sudo systemctl daemon-reload # Good practice
 sudo systemctl enable stravaapp.service
 sudo systemctl start stravaapp.service
