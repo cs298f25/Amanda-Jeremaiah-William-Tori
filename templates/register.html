@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Weekly Mileage Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏃 Register</h1>
+            <p>Create your account to start tracking your mileage</p>
+        </div>
+        
+        <div class="content">
+            <form id="registerForm" class="register-form">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stravaAthleteId">Strava Athlete ID:</label>
+                    <input type="text" id="stravaAthleteId" name="stravaAthleteId" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stravaAccessToken">Strava Access Token:</label>
+                    <input type="text" id="stravaAccessToken" name="stravaAccessToken" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="stravaRefreshToken">Strava Refresh Token:</label>
+                    <input type="text" id="stravaRefreshToken" name="stravaRefreshToken" required>
+                </div>
+                
+                <!-- <div class="form-group">
+                    <label for="tokenExpiration">Token Expiration:</label>
+                    <input type="datetime-local" id="tokenExpiration" name="tokenExpiration" required>
+                </div> -->
+                
+                <div class="form-actions">
+                    <button type="submit" class="submit-btn">Register</button>
+                </div>
+            </form>
+
+            <div class="form-group">
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="/login">Already have an account? Login here</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='register_script.js') }}"></script>
+</body>
+</html>
+

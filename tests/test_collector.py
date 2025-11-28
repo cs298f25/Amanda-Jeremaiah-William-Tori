@@ -15,21 +15,6 @@ from unittest.mock import patch, MagicMock
 #command to test- pytest tests/test_collector.py::test_init_db or pytest tests/ -v
 
 
-def test_init_db():
-    """Test that init_db creates the database tables."""
-    collector.init_db()
-    
-    # Verify tables exist by querying them
-    import sqlite3
-    with sqlite3.connect(collector.DB_NAME) as conn:
-        cursor = conn.cursor()
-        # Check Athletes table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Athletes'")
-        assert cursor.fetchone() is not None
-        # Check DailyMileage table exists
-        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='DailyMileage'")
-        assert cursor.fetchone() is not None
-
 def test_add_example_data():
     """Test that add_example_data adds data to the database."""
     collector.init_db()

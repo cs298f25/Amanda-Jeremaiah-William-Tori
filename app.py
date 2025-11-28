@@ -59,6 +59,10 @@ def dashboard():
     
     return render_template('index.html', user=current_user, has_strava=has_strava)
 
+# @app.route('/dummy_redirect')
+# def dummy_redirect():
+#     return render_template('index.html')
+
 @app.route('/login')
 def login_page():
     return render_template('login.html')
@@ -76,9 +80,10 @@ def login_action():
     
     # Check DB for username
     user_row = database.get_user_by_username(username)
+    is_a_user = database.user_login(username, password) #returns True if user exists and password is correct, False if not
     
     # Check Password Hash
-    if user_row and check_password_hash(user_row['password_hash'], password):
+    if user_row and is_a_user:
         user_obj = User(id=user_row['id'], username=user_row['username'])
         login_user(user_obj)
         return redirect(url_for('dashboard'))
@@ -90,21 +95,42 @@ def login_action():
 def register_action():
     username = request.form.get('username')
     password = request.form.get('password')
+    strava_athlete_id = request.form.get('stravaAthleteId')
+    strava_access_token = request.form.get('stravaAccessToken')
+    strava_refresh_token = request.form.get('stravaRefreshToken')
     
-    # Hash the password
-    hashed_pw = generate_password_hash(password)
-    
-    # Save to DB
+    # Save to DB (password will be hashed inside create_user)
     try:
-        # Write create_user in database.py
-        new_user_id = database.create_user(username, hashed_pw)
+        new_user_id = database.create_user(
+            username, 
+            password,  # Plain password - will be hashed in database.py
+            strava_athlete_id,
+            strava_access_token,
+            strava_refresh_token
+        )
         
         # Log them in immediately
         user_obj = User(id=new_user_id, username=username)
         login_user(user_obj)
         return redirect(url_for('dashboard'))
         
+    except ValueError as e:
+        # User already exists or other validation error
+        # Check if this is a fetch request (by checking if Accept header includes json or if it's an XHR)
+        accepts_json = 'application/json' in request.headers.get('Accept', '')
+        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if accepts_json or is_xhr:
+            return jsonify({'error': str(e)}), 400
+        flash(f"Error: {e}")
+        return redirect(url_for('register_page'))
     except Exception as e:
+        # Other errors
+        accepts_json = 'application/json' in request.headers.get('Accept', '')
+        is_xhr = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
+        if accepts_json or is_xhr:
+            return jsonify({'error': str(e)}), 500
         flash(f"Error: {e}")
         return redirect(url_for('register_page'))
 
