@@ -145,9 +145,98 @@ def user_login(username, password):
     else:
         return False
 
+def get_refresh_token_by_username(username):
+    """Get the refresh token for a user by username. Returns the token string or None."""
+    user_row = get_user_by_username(username)
+    if user_row:
+        return user_row.get('strava_refresh_token')
+    return None
+    
 
+def get_client_id_from_username(username):
+    user_row = get_user_by_username(username)
+    return user_row['strava_athlete_id']
 
+def get_most_recent_activity_date_by_username(username):
+    #will pass in session username when using this function
+    conn = get_connection()
+    cursor = conn.cursor()
+    # Join DailyMileage directly to Users (no need for Athletes table)
+    cursor.execute("SELECT d.date FROM DailyMileage d INNER JOIN Users u ON d.user_id = u.id WHERE u.username = ? ORDER BY d.date DESC LIMIT 1", (username,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
 
+def get_activity_distance_by_activity_id(activity_id):
+    #will be called by app.py or script.py to get the activity distance for the current day
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT distance FROM DailyMileage WHERE activity_id = ?", (activity_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def get_activity_distance_by_date(date):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT distance FROM DailyMileage WHERE date = ?", (date,))
+    row = cursor.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def create_activity(user_id, date, distance, activity_title):
+    #will be called when an activity is grabbed by the collector (so info is just passed in)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO DailyMileage (user_id, date, distance, activity_title) VALUES (?, ?, ?, ?)", (user_id, date, distance, activity_title))
+    conn.commit()
+    conn.close()
+
+def get_user_id_from_username(username):
+    user_row = get_user_by_username(username)
+    return user_row['id']
+
+def get_row_from_athletes_table(username):
+    conn = get_connection()
+    cursor = conn.cursor()
+    user_id = get_user_id_from_username(username)
+    cursor.execute("SELECT * FROM Athletes WHERE user_id = ?", (user_id,))
+    row = cursor.fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+def create_athlete_at_registration(username):
+    #athlete table should be updated via information acquired from the collector
+    user_row = get_user_by_username(username)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("INSERT INTO Athletes (user_id) VALUES (?)", (user_row['id'],))
+    conn.commit()
+    conn.close()
+
+def update_athlete_with_collector_info(username, first_name, last_name, gender):
+    user_row = get_row_from_athletes_table(username)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Athletes SET first_name = ?, last_name = ?, gender = ? WHERE user_id = ?", (first_name, last_name, gender, user_row['user_id']))
+    conn.commit()
+    conn.close()
+
+def set_long_run_goal(username, long_run_goal):
+    user_row = get_row_from_athletes_table(username)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Athletes SET long_run_goal = ? WHERE user_id = ?", (long_run_goal, user_row['user_id']))
+    conn.commit()
+    conn.close()
+
+def set_mileage_goal(username, mileage_goal):
+    user_row = get_row_from_athletes_table(username)
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("UPDATE Athletes SET mileage_goal = ? WHERE user_id = ?", (mileage_goal, user_row['user_id']))
+    conn.commit()
+    conn.close()
 
 # def save_user_tokens(user_id, tokens):
 #     """Save Strava tokens to user. tokens is a dict with access_token, refresh_token, expires_at, athlete.id"""
