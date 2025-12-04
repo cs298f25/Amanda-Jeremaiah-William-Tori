@@ -14,9 +14,9 @@ echo "--- Installing Dependencies ---"
 pip install -r requirements.txt
 echo "--- Dependencies Installed ---"
 
-3. Initialize database tables
-echo "--- Initializing Database Tables ---"
-python3 setup_db.py 
+# 3. Initialize database tables
+# echo "--- Initializing Database Tables ---"
+#python3 setup_db.py 
 deactivate
 
 4. Copy the service file and start the service
