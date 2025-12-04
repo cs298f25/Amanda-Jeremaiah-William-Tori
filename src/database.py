@@ -9,13 +9,12 @@ DB_NAME = "MileageTracker.db"
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        
         #Resetting the tables each time collector is run to maintain known state
         #these 3 lines will be commented out when we are done testing
-        # cursor.execute("DROP TABLE IF EXISTS Users")
-        # cursor.execute("DROP TABLE IF EXISTS DailyMileage")
-        # cursor.execute("DROP TABLE IF EXISTS Athletes")
-        
+        cursor.execute("DROP TABLE IF EXISTS Users")
+        cursor.execute("DROP TABLE IF EXISTS DailyMileage")
+        cursor.execute("DROP TABLE IF EXISTS Athletes")
+    
         # User table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Users (
@@ -30,7 +29,6 @@ def init_db():
             last_sync_time INTEGER DEFAULT 0
         )
         """)
-
         # Athlete table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS  Athletes (
@@ -40,7 +38,6 @@ def init_db():
             FOREIGN KEY (user_id) REFERENCES Users(id)
         )
         """)
-
         # DailyMileage table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS  DailyMileage (
@@ -50,11 +47,11 @@ def init_db():
             distance REAL,
             activity_title VARCHAR(100),
             FOREIGN KEY (user_id) REFERENCES Users(id),
-            UNIQUE(user_id, date, activity_title)
+            UNIQUE(user_id, date, activity_id)
         )
         """)
-
         conn.commit()
+
 
 def get_connection():
     try:
@@ -63,7 +60,6 @@ def get_connection():
         return conn
     except Exception as e:
         print(f"Unable to establish connection to {DB_NAME}")
-
 
 # USER MANAGEMENT METHODS
 
@@ -77,6 +73,7 @@ def update_last_sync_time(user_id):
     )
     conn.commit()
     conn.close()
+
 
 def get_user_by_id(user_id):
     """Get user by ID. Returns row dict or None."""
@@ -102,10 +99,8 @@ def create_user(username, password):
     """Create a new user. Returns the new user's ID."""
     # Hash the password using werkzeug's secure hashing
     password_hash = generate_password_hash(password, method='pbkdf2:sha256')
-
     conn = get_connection()
     cursor = conn.cursor()
-    
     try:
         cursor.execute(
             "INSERT INTO Users (username, password_hash) VALUES (?, ?)",
@@ -125,6 +120,16 @@ def create_user(username, password):
             # Re-raise if it's a different integrity constraint
             raise
 
+
+def validate_password(username, password):
+    """Login a user. Returns True/False."""
+    user_row = get_user_by_username(username)
+    if user_row and check_password_hash(user_row['password_hash'], password):
+        return True
+    else:
+        return False
+    
+
 def user_has_strava(user_id):
     """Check if user has Strava tokens. Returns True/False."""
     conn = get_connection()
@@ -137,13 +142,6 @@ def user_has_strava(user_id):
     conn.close()
     return row is not None and row[0] is not None
 
-def validate_password(username, password):
-    """Login a user. Returns True/False."""
-    user_row = get_user_by_username(username)
-    if user_row and check_password_hash(user_row['password_hash'], password):
-        return True
-    else:
-        return False
 
 def get_user_tokens(user_id):
     conn = get_connection()
@@ -153,6 +151,7 @@ def get_user_tokens(user_id):
     ).fetchone()
     conn.close()
     return row
+
 
 def update_user_tokens(user_id, access_token, refresh_token, expires_at):
     conn = get_connection()
@@ -167,10 +166,10 @@ def update_user_tokens(user_id, access_token, refresh_token, expires_at):
     conn.commit()
     conn.close()
 
+
 def save_user_tokens_and_info(user_id, access_token, refresh_token, expires_at, strava_id, first_name, last_name, gender):
     conn = get_connection()
     cursor = conn.cursor()
-
     cursor.execute(
         """UPDATE Users 
            SET strava_athlete_id = ?, 
@@ -189,17 +188,17 @@ def save_user_tokens_and_info(user_id, access_token, refresh_token, expires_at, 
            VALUES (?, 0, 0)""",
         (user_id,)
     )
-
     conn.commit()
     conn.close()
     print(f"Tokens and profile info saved for User ID: {user_id}")
 
-def create_activity(user_id, date, distance, title):
+
+def create_activity(user_id, date, distance, activity_id):
     #will be called when an activity is grabbed by the collector (so info is just passed in)
     conn = get_connection()
     conn.execute(
-        "INSERT OR IGNORE INTO DailyMileage (user_id, date, distance, activity_title) VALUES (?, ?, ?, ?)", 
-        (user_id, date, distance, title)
+        "INSERT OR IGNORE INTO DailyMileage (user_id, date, distance, activity_id) VALUES (?, ?, ?, ?)", 
+        (user_id, date, distance, activity_id)
     )
     conn.commit()
     conn.close()
@@ -223,6 +222,7 @@ def get_row_from_athletes_table(user_id):
     conn.close()
     return dict(row) if row else None
 
+
 def set_long_run_goal(username, long_run_goal):
     user_row = get_row_from_athletes_table(username)
     conn = get_connection()
@@ -231,6 +231,7 @@ def set_long_run_goal(username, long_run_goal):
     conn.commit()
     conn.close()
 
+
 def set_mileage_goal(username, mileage_goal):
     user_row = get_row_from_athletes_table(username)
     conn = get_connection()
@@ -238,6 +239,7 @@ def set_mileage_goal(username, mileage_goal):
     cursor.execute("UPDATE Athletes SET mileage_goal = ? WHERE user_id = ?", (mileage_goal, user_row['user_id']))
     conn.commit()
     conn.close()
+
 
 def get_activities_for_user(user_id):
     """Get all activities for a user. Returns list of dicts."""
