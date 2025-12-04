@@ -19,7 +19,7 @@ echo "--- Dependencies Installed ---"
 #python3 setup_db.py 
 deactivate
 
-4. Copy the service file and start the service
+# 4. Copy the service file and start the service
 echo "--- Copying Service File ---"
 sudo cp ./stravaapp.service /etc/systemd/system/
 echo "--- Reloading Systemd ---"
