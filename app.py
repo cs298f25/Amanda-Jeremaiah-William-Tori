@@ -137,7 +137,7 @@ def connect_strava():
     Redirects the user to Strava.com to authorize our app.
     """
     client_id = os.getenv('STRAVA_CLIENT_ID')
-    redirect_uri = "mcnesbyaweb.moraviancs.click:8000/strava/callback"
+    redirect_uri = "http://mcnesbyaweb.moraviancs.click:8000/strava/callback"
     
     # Construct the URL
     strava_url = f"https://www.strava.com/oauth/authorize?client_id={client_id}&response_type=code&redirect_uri={redirect_uri}&approval_prompt=force&scope=read,activity:read_all"
