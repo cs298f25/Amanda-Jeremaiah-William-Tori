@@ -1,6 +1,5 @@
 import sys
 import os
-# Add parent directory to path so we can import collector
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import database
@@ -8,25 +7,16 @@ import pytest
 import datetime
 from unittest.mock import patch, MagicMock
 
-# ============================================
-# Testing Database Functions (No mocking needed)
-# ============================================
-
-#command to test- pytest tests/test_collector.py::test_init_db or pytest tests/ -v
-
 
 def test_init_db():
     """Test that init_db creates the database tables."""
     database.init_db()
     
-    # Verify tables exist by querying them
     import sqlite3
     with sqlite3.connect(database.DB_NAME) as conn:
         cursor = conn.cursor()
-        # Check Athletes table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='Athletes'")
         assert cursor.fetchone() is not None
-        # Check DailyMileage table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='DailyMileage'")
         assert cursor.fetchone() is not None
 
@@ -43,13 +33,10 @@ def test_create_user():
 
 def test_create_duplicate_user():
     """Test that create_user creates a new user and prevents duplicates."""
-    # Initialize database to ensure clean state
     database.init_db()
     
-    # Test 1: Create a new user successfully
     database.create_user('testuser', 'testpassword')
     
-    # Verify user was created in the database
     import sqlite3
     with sqlite3.connect(database.DB_NAME) as conn:
         cursor = conn.cursor()
@@ -65,12 +52,6 @@ def test_create_duplicate_user():
         cursor.execute("SELECT COUNT(*) FROM Users WHERE username = ?", ('testuser',))
         count = cursor.fetchone()[0]
         assert count == 1, "Should only have one user with this username"
-
-def test_session_username_set():
-    """Test that the session username is set correctly."""
-    #idk if you can test this
-    #might be a test for the app.py file
-    pass
 
 def test_get_connection():
     """Test that the get_connection function returns a connection to the database."""
@@ -230,18 +211,6 @@ def test_create_athlete_with_goals():
     assert athlete_row['mileage_goal'] == 100.0
     assert athlete_row['long_run_goal'] == 10.0
 
-# def test_create_athlete_with_goals_for_duplicate_user():
-#     """Test that the create_athlete_with_goals function creates an athlete in the database."""
-#     database.init_db()
-#     database.create_user('testuser', 'testpassword')
-#     database.create_athlete_with_goals(1, 100.0, 10.0)
-#     database.create_athlete_with_goals(1, 100.0, 10.0)
-#     conn = database.get_connection()
-#     cursor = conn.cursor()
-#     cursor.execute("SELECT COUNT(*) FROM Athletes WHERE user_id = ?", (1,))
-#     count = cursor.fetchone()[0]
-#     assert count == 1
-
 def test_get_row_from_athletes_table():
     """Test that the get_row_from_athletes_table function returns the row from the athletes table."""
     database.init_db()
@@ -268,13 +237,6 @@ def test_set_long_run_goal():
     assert row is not None
     assert row['long_run_goal'] == 20.0
 
-# def test_set_long_run_goal_for_nonexistent_user():
-#     """Test that the set_long_run_goal function updates the long run goal in the database."""
-#     database.init_db()
-#     database.set_long_run_goal(1, 20.0)
-#     row = database.get_row_from_athletes_table(1)
-#     assert row is None
-
 def test_set_mileage_goal():
     """Test that the set_mileage_goal function updates the mileage goal in the database."""
     database.init_db()
@@ -284,13 +246,6 @@ def test_set_mileage_goal():
     row = database.get_row_from_athletes_table(1)
     assert row is not None
     assert row['mileage_goal'] == 200.0
-
-# def test_set_mileage_goal_for_nonexistent_user():
-#     """Test that the set_mileage_goal function updates the mileage goal in the database."""
-#     database.init_db()
-#     database.set_mileage_goal(1, 200.0)
-#     row = database.get_row_from_athletes_table(1)
-#     assert row is None
 
 def test_get_activities_for_user_one_activity():
     """Test that the get_activities_for_user function returns the activities for a user."""
