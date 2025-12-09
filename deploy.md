@@ -50,52 +50,53 @@ To deploy and run the application locally, follow these steps:
 
 
 ## Deploy on AWS
-Before deploying, your `.env` will need the following:
-* `STRAVA_CLIENT_ID=<insert>`
-* `STRAVA_CLIENT_SECRET=<insert>`
-* `STRAVA_REFRESH_TOKEN=<insert>`
-* `FLASK_SECRET_KEY=<insert>`
-* `ENCRYPTION_KEY=<insert>`
 
-1. Create your EC2 instance on AWS-
+### Configure:
+   - **AMI:** Amazon Linux
+   - **Instance Type:** t2.micro or t3.micro
+   - **Key Pair:** Select or create a key pair (save the .pem file)
+   - **Security Group:** Add rule for **Custom TCP port 8000** from **0.0.0.0/0**
+   - **Storage:** Default 8GB
+
+1. **Create your EC2 instance on AWS**
 Paste this into your User Data when creating the instance:
 ```bash
 #!/bin/bash
-yum update -y
-yum install -y git python3 python3-pip
+sudo yum update -y
+sudo yum install -y git python3 python3-pip
 git clone https://github.com/cs298f25/Amanda-Jeremaiah-William-Tori.git /home/ec2-user/Amanda-Jeremaiah-William-Tori
 cd /home/ec2-user/Amanda-Jeremaiah-William-Tori
 chmod +x ec2-deploy.sh
 sudo ./ec2-deploy.sh
 ```
         
-3. SSH into your created instance
+3. **SSH into your created instance**
 ```bash
 ssh -i ~/.ssh/labsuser.pem ec2-user@<IPv 4 address>
 ```
    
-3. Install Git
+3. **Install Git**
 ```bash
 sudo yum install -y git
 ```
         
-4. Clone the repo into your EC2 instance
+4. **Clone the repo into your EC2 instance**
 ```bash
 git clone https://github.com/cs298f25/Amanda-Jeremaiah-William-Tori.git
 cd Amanda-Jeremaiah-William-Tori
 ```
 
-5. Change permissions on the script file
+5. **Change permissions on the script file**
 ```bash
 chmod +x ec2-deploy.sh
 ```     
 
-6. Run the Deploy script
+6. **Run the Deploy script**
 ```bash
 sudo ./ec2-deploy.sh
 ```
 
-7. Access the Web Page
+7. **Access the Web Page**
 ```bash
 http://[your-public-ip]:8000
 ```
