@@ -23,7 +23,7 @@ def test_fetch_converts_meters_to_miles_correctly():
     
     fake_strava_data = [{
         'id': 101,
-        'distance': 1609.34,         # ~1 mile
+        'distance': 1609.34,
         'start_date_local': '2023-10-27T08:00:00Z',
         'name': 'Test Run'
     }]

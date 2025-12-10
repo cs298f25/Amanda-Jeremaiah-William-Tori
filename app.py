@@ -170,8 +170,6 @@ def strava_callback():
         print(f"OAuth failed: {e}")
         return redirect(url_for('dashboard'))
 
-
-#Returns all activities, mileage goal, and long run goal for the current user as JSON.
 @app.route('/api/activities')
 @login_required
 def get_activities_data():

@@ -1,11 +1,8 @@
 import os
 from dotenv import load_dotenv
-import datetime
 import time
 import requests
 import database
-
-#info about the athlete is stored in the database, so no need to store it here
 
 load_dotenv()
 

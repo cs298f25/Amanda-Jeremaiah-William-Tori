@@ -68,16 +68,14 @@ def test_login_success_redirects_to_dashboard(client):
     with patch('database.get_user_by_username') as mock_get, \
          patch('database.validate_password') as mock_val:
         
-        # Mock: Valid User & Correct Password
         mock_get.return_value = {
             'id': 1, 'username': 'runner', 'last_sync_time': 0, 'password_hash': 'h'
         }
         mock_val.return_value = True
 
-        # Execute
         response = client.post('/login', data={'username': 'runner', 'password': 'correct'}, follow_redirects=False)
 
-        # Assert: Should redirect (302) to the dashboard ('/')
+        # Should redirect (302) to the dashboard ('/')
         assert response.status_code == 302
         assert response.location == '/' or 'http://localhost/' in response.location
 
@@ -85,15 +83,12 @@ def test_register_creates_user_and_goals(client):
     """
     UNIT TEST: Registration should create a user and athlete record, then log them in.
     """
-    # We mock create_user to return a new ID (e.g., 55)
     with patch('database.create_user', return_value=55) as mock_create, \
          patch('database.create_athlete_with_goals') as mock_goals, \
-         patch('database.get_user_by_id') as mock_get_id: # Needed for auto-login
+         patch('database.get_user_by_id') as mock_get_id:
         
-        # Mock the user object needed for the auto-login that happens after register
         mock_get_id.return_value = {'id': 55, 'username': 'new_user', 'last_sync_time': 0}
 
-        # Execute
         response = client.post('/register', data={
             'username': 'new_user',
             'password': 'password123',
@@ -101,10 +96,8 @@ def test_register_creates_user_and_goals(client):
             'long_run': '20'
         }, follow_redirects=False)
 
-        # Assert
-        assert response.status_code == 302 # Should redirect to dashboard
+        assert response.status_code == 302 
         
-        # Verify DB was called with correct data
         mock_create.assert_called_once() 
         mock_goals.assert_called_with(55, 100.0, 20.0)
 
@@ -112,16 +105,13 @@ def test_api_returns_correct_json_structure(client):
     """
     UNIT TEST: The API should return the specific JSON format our frontend expects.
     """
-    # 1. Force Login
     with client.session_transaction() as sess:
         sess['_user_id'] = '1'
         sess['_fresh'] = True
 
-    # 2. Mock User Loader
     with patch('database.get_user_by_id') as mock_db_get:
         mock_db_get.return_value = {'id': 1, 'username': 'runner', 'last_sync_time': 0}
 
-        # 3. Mock Data
         fake_activities = [{'activity_id': 101, 'distance': 5.0, 'date': '2023-01-01'}]
         fake_athlete = {'mileage_goal': 50.0, 'long_run_goal': 15.0}
 
@@ -129,10 +119,8 @@ def test_api_returns_correct_json_structure(client):
              patch('database.get_row_from_athletes_table', return_value=fake_athlete), \
              patch('database.user_has_strava', return_value=True):
 
-            # Execute
             response = client.get('/api/activities')
             
-            # Assert
             assert response.status_code == 200
             data = response.get_json()
             

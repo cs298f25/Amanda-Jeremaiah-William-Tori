@@ -1,6 +1,5 @@
 import os
 import sqlite3
-import datetime
 import time
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -36,11 +35,6 @@ def decrypt_token(token):
 def init_db():
     with sqlite3.connect(DB_NAME) as conn:
         cursor = conn.cursor()
-        #Resetting the tables each time collector is run to maintain known state
-        #these 3 lines will be commented out when we are done testing
-        cursor.execute("DROP TABLE IF EXISTS Users")
-        cursor.execute("DROP TABLE IF EXISTS DailyMileage")
-        cursor.execute("DROP TABLE IF EXISTS Athletes")
     
         # User table
         cursor.execute("""
