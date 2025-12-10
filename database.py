@@ -101,7 +101,23 @@ def update_last_sync_time(user_id):
     conn.commit()
     conn.close()
 
-
+def get_last_sync_time(user_id):
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT last_sync_time FROM Users WHERE id = ?", 
+            (user_id,)
+        )
+        row = cursor.fetchone()
+        conn.close()
+        if row and row[0]:
+            return row[0]
+        else:
+            return None
+    finally:
+        conn.close()
+    
 def get_user_by_id(user_id):
     """Get user by ID. Returns row dict or None."""
     conn = get_connection()

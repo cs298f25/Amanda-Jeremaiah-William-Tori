@@ -1,5 +1,4 @@
 import os
-import threading
 import logging
 import time
 from flask import Flask, render_template, redirect, url_for, request, flash, jsonify
@@ -12,7 +11,6 @@ import collector
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__) 
 
-database.init_db()
 load_dotenv()
 
 app = Flask(__name__)
@@ -23,6 +21,7 @@ app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
+login_manager.login_message = ""
 
 class User(UserMixin):
     def __init__(self, id, username, last_sync_time=0 ):
@@ -49,7 +48,7 @@ def dashboard():
     has_strava = database.user_has_strava(current_user.id)
 
     if current_time - last_sync > 900:
-        collector.fetch_and_save_user_data
+        collector.fetch_and_save_user_data(current_user.id)
         database.update_last_sync_time(current_user.id)
     
     
@@ -91,14 +90,12 @@ def register_action():
     mileage_goal = request.form.get('mileage')
     long_run_goal = request.form.get('long_run')
     
-    # Save to DB (password will be hashed inside create_user)
     try:
         new_user_id = database.create_user(
             username, 
             password
         )
         
-        # Create athlete record with goals
         if mileage_goal and long_run_goal:
             try:
                 mileage_goal = float(mileage_goal)
@@ -108,18 +105,24 @@ def register_action():
                 print(f"Error parsing goals: {e}")
                 # Continue with registration even if goals fail
         
-        # Log them in immediately
         user_obj = User(id=new_user_id, username=username)
         login_user(user_obj)
         
         return redirect(url_for('dashboard'))
         
     except ValueError as e:
-        print(str(e))
+        # Check if the error message indicates a duplicate user
+        if "exists" in str(e).lower() or "duplicate" in str(e).lower():
+            flash("That username already exists. Please choose another.")
+        else:
+            # Flash the generic error message from the database
+            flash(f"Registration failed: {str(e)}")
+            
         return redirect(url_for('register_page'))
     
     except Exception as e:
         print(str(e))
+        flash("An unexpected error occurred. Please try again.")
         return redirect(url_for('register_page'))
 
 @app.route('/logout')
@@ -188,4 +191,5 @@ def get_activities_data():
     })
 
 if __name__ == "__main__":
+    database.init_db()
     app.run(debug=True, host='0.0.0.0', port=8000)

@@ -98,7 +98,12 @@ def fetch_and_save_user_data(user_id):
     try:
         token = get_valid_access_token(user_id)
 
-        start_date = int(time.time()) - seconds_in_30_days
+        last_sync = database.get_last_sync_time(user_id)
+
+        if last_sync:
+            start_date = last_sync
+        else:
+            start_date = int(time.time()) - seconds_in_30_days
 
         url = "https://www.strava.com/api/v3/athlete/activities"
         headers = {"Authorization": f"Bearer {token}"}

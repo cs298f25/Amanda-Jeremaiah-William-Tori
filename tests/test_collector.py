@@ -1,123 +1,133 @@
 import sys
 import os
-# Add parent directory to path so we can import collector
+import pytest
+from unittest.mock import patch, MagicMock
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import collector
-import pytest
-import datetime
-from unittest.mock import patch, MagicMock
+import database
+
+@pytest.fixture(autouse=True)
+def mock_env_vars():
+    fake_env = {
+        'STRAVA_CLIENT_ID': 'test_id',
+        'STRAVA_CLIENT_SECRET': 'test_secret',
+        'ENCRYPTION_KEY': 'test_key'
+    }
+    with patch.dict(os.environ, fake_env):
+        yield
+
+def test_fetch_converts_meters_to_miles_correctly():
+    user_id = 1
+    
+    fake_strava_data = [{
+        'id': 101,
+        'distance': 1609.34,         # ~1 mile
+        'start_date_local': '2023-10-27T08:00:00Z',
+        'name': 'Test Run'
+    }]
+
+    #patching for test
+    with patch('requests.get') as mock_get, \
+         patch('collector.get_valid_access_token') as mock_token, \
+         patch('database.get_last_sync_time') as mock_sync_time, \
+         patch('database.create_activity') as mock_db_save:
+         
+        mock_token.return_value = "fake_token"
+        mock_sync_time.return_value = None
+        
+        # Setup fake network response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = fake_strava_data
+        mock_get.return_value = mock_response
+
+        collector.fetch_and_save_user_data(user_id)
+
+        mock_db_save.assert_called_with(
+            user_id=1,
+            date='2023-10-27',
+            distance=1.0, 
+            activity_id=101
+        )
 
 
+def test_authorize_and_save_user_parses_response():
+    fake_code = "valid_code_123"
+    user_id = 5
+    
+    fake_oauth_response = {
+        'access_token': 'new_access',
+        'refresh_token': 'new_refresh',
+        'expires_at': 999999,
+        'athlete': {
+            'id': 888,
+            'firstname': 'Fast',
+            'lastname': 'Runner',
+            'sex': 'M'
+        }
+    }
 
-# def test_get_latest_fetch_date():
-#     """Test that get_latest_fetch_date returns the most recent date."""
-#     collector.init_db()
-#     collector.add_example_data()
-    
-#     result = collector.get_latest_fetch_date()
-#     # Use datetime.datetime.now() - datetime is the module, datetime.datetime is the class
-#     projected_result = datetime.datetime.now().date().isoformat()
-#     assert result == projected_result
-#     # Should return a date string
-#     assert isinstance(result, str)
+    with patch('collector.exchange_code_for_tokens') as mock_exchange, \
+         patch('database.save_user_tokens_and_info') as mock_db_save:
+         
+        mock_exchange.return_value = fake_oauth_response
 
-# def test_get_latest_fetch_date_empty():
-#     """Test get_latest_fetch_date when table is empty."""
-#     collector.init_db()
-#     # Don't add data
-    
-#     result = collector.get_latest_fetch_date()
-#     assert result is None
+        collector.authorize_and_save_user(fake_code, user_id)
 
-# # ============================================
-# # Testing API Functions (Use mocking to avoid real API calls)
-# # ============================================
+        mock_db_save.assert_called_once_with(
+            user_id,
+            'new_access',
+            'new_refresh',
+            999999,
+            888
+        )
 
-# @patch('collector.fetch_activities_after_date')
-# @patch('collector.get_latest_fetch_date')
-# def test_fetch_new_activities(mock_get_date, mock_fetch_activities):
-#     """Test fetch_new_activities with mocked dependencies."""
-#     # Setup: Define what the mocked functions should return
-#     mock_get_date.return_value = "2024-01-01"
-#     mock_fetch_activities.return_value = [
-#         {"id": 1, "name": "Morning Run", "distance": 5.0}
-#     ]
-    
-#     # Execute
-#     result = collector.fetch_new_activities()
-    
-#     # Verify
-#     assert result is not None
-#     assert len(result) == 1
-#     # Verify the mocked functions were called
-#     mock_get_date.assert_called_once()
-#     mock_fetch_activities.assert_called_once_with("2024-01-01")
+def test_get_valid_access_token_refreshes_when_expired():
+    """
+    UNIT TEST: Verifies that if a token is expired, we trigger a refresh.
+    """
+    user_id = 1
 
-# @patch('collector.fetch_activities_after_date')
-# @patch('collector.get_latest_fetch_date')
-# def test_fetch_new_activities_no_data(mock_get_date, mock_fetch_activities):
-#     """Test fetch_new_activities when there's no data in database."""
-#     mock_get_date.return_value = None
-    
-#     result = collector.fetch_new_activities()
-    
-#     assert result is None
-#     # Should not call fetch_activities_after_date when there's no data
-#     mock_fetch_activities.assert_not_called()
+    expired_tokens = {
+        'strava_access_token': 'old_token',
+        'strava_refresh_token': 'valid_refresh',
+        'token_expiration': 1000 
+    }
 
-# @patch('collector.requests.get')
-# @patch('collector.refresh_access_token')
-# @patch('collector.os.getenv')
-# def test_fetch_activities_after_date(mock_getenv, mock_refresh, mock_get):
-#     """Test fetch_activities_after_date with mocked API calls."""
-#     # Setup mocks
-#     mock_getenv.side_effect = lambda key: {
-#         'STRAVA_CLIENT_ID': 'test_id',
-#         'STRAVA_CLIENT_SECRET': 'test_secret',
-#         'STRAVA_REFRESH_TOKEN': 'test_token'
-#     }.get(key)
-#     mock_refresh.return_value = "fake_access_token"
-    
-#     # Mock the HTTP response
-#     mock_response = MagicMock()
-#     mock_response.json.return_value = [
-#         {"id": 1, "name": "Test Run", "distance": 5.0}
-#     ]
-#     mock_response.raise_for_status = MagicMock()
-#     mock_get.return_value = mock_response
-    
-#     # Execute
-#     test_date = datetime.datetime(2024, 1, 1)
-#     result = collector.fetch_activities_after_date(test_date)
-    
-#     # Verify
-#     assert result is not None
-#     assert len(result) == 1
-#     assert result[0]["name"] == "Test Run"
+    with patch('database.get_user_tokens') as mock_get_tokens, \
+         patch('collector.refresh_access_token') as mock_refresh_func:
+         
+        mock_get_tokens.return_value = expired_tokens
+        mock_refresh_func.return_value = "brand_new_token"
 
-# @patch('collector.os.getenv')
-# def test_fetch_activities_after_date_missing_credentials(mock_getenv):
-#     """Test that missing credentials raises an error."""
-#     mock_getenv.return_value = None  # All credentials are None
-    
-#     with pytest.raises(ValueError, match="Missing Strava credentials"):
-#         collector.fetch_activities_after_date(datetime.datetime.now())
+        result = collector.get_valid_access_token(user_id)
 
-# @patch('collector.requests.post')
-# def test_refresh_access_token(mock_post):
-#     """Test refresh_access_token with mocked API call."""
-#     # Mock the token response
-#     mock_response = MagicMock()
-#     mock_response.json.return_value = {
-#         'access_token': 'new_access_token_123'
-#     }
-#     mock_response.raise_for_status = MagicMock()
-#     mock_post.return_value = mock_response
+        mock_refresh_func.assert_called_once_with(user_id, 'valid_refresh')
+        assert result == "brand_new_token"
+
+def test_get_valid_access_token_returns_existing_if_valid():
+    """
+    UNIT TEST: Verifies that if token is valid, we just return it 
+    without refreshing.
+    """
+    import time
+    user_id = 1
     
-#     # Execute
-#     result = collector.refresh_access_token('client_id', 'client_secret', 'refresh_token')
-    
-#     # Verify
-#     assert result == 'new_access_token_123'
-#     mock_post.assert_called_once()
+    future_time = int(time.time()) + 3600
+    valid_tokens = {
+        'strava_access_token': 'valid_token',
+        'strava_refresh_token': 'valid_refresh',
+        'token_expiration': future_time
+    }
+
+    with patch('database.get_user_tokens') as mock_get_tokens, \
+         patch('collector.refresh_access_token') as mock_refresh_func:
+         
+        mock_get_tokens.return_value = valid_tokens
+
+        result = collector.get_valid_access_token(user_id)
+
+        mock_refresh_func.assert_not_called()
+        assert result == "valid_token"
